@@ -1,7 +1,8 @@
 FROM python:3.12-slim
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg nodejs && \
+    apt-get install -y --no-install-recommends ffmpeg nodejs curl ca-certificates unzip && \
+    curl -fsSL https://deno.land/install.sh | DENO_INSTALL=/usr/local sh && \
     pip install --no-cache-dir "yt-dlp[default,curl-cffi]" && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
