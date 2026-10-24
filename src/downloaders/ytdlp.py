@@ -226,6 +226,11 @@ class YtDlpDownloader:
         explicitly plus the EJS remote component; without Node, return no
         flags so yt-dlp falls back to its default behaviour.
         """
+        # Deno is yt-dlp's recommended/default JS runtime and handles
+        # YouTube's EJS challenge most reliably in Docker; Node (Debian 18
+        # in the slim image) is kept as a fallback.
+        if shutil.which("deno"):
+            return ["--js-runtimes", "deno", "--remote-components", "ejs:github"]
         if shutil.which("node"):
             return ["--js-runtimes", "node", "--remote-components", "ejs:github"]
         return []
