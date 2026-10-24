@@ -216,6 +216,20 @@ class YtDlpDownloader:
             return ["--cookies-from-browser", self.settings.browser_name]
         return []
 
+    def _js_args(self) -> List[str]:
+        """JS runtime flags for YouTube's player challenge (EJS).
+
+        YouTube now often returns no player response at all from datacenter
+        IPs unless a JS runtime solves its challenge. The bot's slim image
+        has no JS runtime, so those requests fail with "Failed to extract
+        any player response". With Node installed (see Dockerfile) pass it
+        explicitly plus the EJS remote component; without Node, return no
+        flags so yt-dlp falls back to its default behaviour.
+        """
+        if shutil.which("node"):
+            return ["--js-runtimes", "node", "--remote-components", "ejs:github"]
+        return []
+
     def _resolve_user_agent(self, use_cookies: bool) -> str:
         """Pick a UA that matches the cookie source browser, if any.
 
@@ -269,6 +283,7 @@ class YtDlpDownloader:
         ]
 
         cmd.extend(self._cookie_args())
+        cmd.extend(self._js_args())
         cmd.extend(["--user-agent", self._resolve_user_agent(use_cookies=True)])
 
         cmd.append(url)
@@ -840,6 +855,7 @@ class YtDlpDownloader:
 
         # Suppress version update warning
         cmd.append("--no-update")
+        cmd.extend(self._js_args())
         cmd.extend(["--user-agent", self._resolve_user_agent(use_cookies)])
 
         # When we hand yt-dlp a media URL captured from a page's player, most
