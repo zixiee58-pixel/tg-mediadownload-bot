@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 tg-media-bot - Telegram Media Downloader Bot
 
@@ -6,11 +7,13 @@ A lightweight self-hosted Telegram bot for downloading media from various platfo
 """
 
 import asyncio
+import os
 import signal
 import sys
 from pathlib import Path
 
 import structlog
+from aiohttp import web
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -55,6 +58,24 @@ async def shutdown(sig, loop, bot: Bot, queue, cleanup):
     logger.info("Shutdown complete")
 
 
+async def health_server():
+    """Tiny HTTP server so Render's port check passes and UptimeRobot can ping.
+
+    The bot itself runs on polling and needs no HTTP, but Render web services
+    require a bound port. This serves a plain 'ok' on / and /healthz and does
+    not touch the bot's behaviour.
+    """
+    async def ok(request):
+        return web.Response(text="ok")
+    app = web.Application()
+    app.router.add_get("/", ok)
+    app.router.add_get("/healthz", ok)
+    port = int(os.environ.get("PORT", "10000"))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    await web.TCPSite(runner, "0.0.0.0", port).start()
+
+
 async def main():
     """Main entry point."""
     # Load settings
@@ -70,6 +91,7 @@ async def main():
     logger.info("Starting tg-media-bot")
     if settings.log_file:
         logger.info(f"Persisting logs to: {settings.log_file}")
+
     logger.info(f"Temp directory: {settings.temp_dir}")
     logger.info(f"Max parallel downloads: {settings.max_parallel_downloads}")
 
@@ -114,11 +136,11 @@ async def main():
     loop = asyncio.get_event_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(
-            sig,
             lambda s=sig: asyncio.create_task(shutdown(s, loop, bot, queue, cleanup))
         )
 
     logger.info("Bot initialized, starting polling...")
+    asyncio.create_task(health_server())
 
     try:
         # Start polling with bot
