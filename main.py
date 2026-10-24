@@ -136,7 +136,7 @@ async def main():
     loop = asyncio.get_event_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(
-            lambda s=sig: asyncio.create_task(shutdown(s, loop, bot, queue, cleanup))
+            sig, lambda s=sig: asyncio.create_task(shutdown(s, loop, bot, queue, cleanup))
         )
 
     logger.info("Bot initialized, starting polling...")
